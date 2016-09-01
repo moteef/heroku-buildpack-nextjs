@@ -14,7 +14,7 @@ DEFAULT_CACHE="node_modules bower_components"
 
 ### Configure directories
 
-BUILD_DIR=$(cd ${1:-}; cd app/assets/dashboard; pwd)
+BUILD_DIR=$(cd ${1:-}; cd lib/assets/dashboard; pwd)
 CACHE_DIR=${2:-}
 ENV_DIR=${3:-}
 BP_DIR=$(cd $(dirname ${0:-}); cd ..; pwd)
