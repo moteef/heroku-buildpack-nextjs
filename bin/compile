@@ -14,10 +14,12 @@ DEFAULT_CACHE="node_modules bower_components"
 
 ### Configure directories
 
-BUILD_DIR=$(cd ${1:-}; cd lib/assets/dashboard; pwd)
+#BUILD_DIR=$(cd ${1:-}; cd lib/assets/dashboard; pwd)
+BUILD_DIR=${1:-}
 CACHE_DIR=${2:-}
 ENV_DIR=${3:-}
 BP_DIR=$(cd $(dirname ${0:-}); cd ..; pwd)
+APP_DIR=$(cd ${1:-}; cd lib/assets/dashboard; pwd)
 
 mkdir -p "$BUILD_DIR/.heroku/node/"
 cd $BUILD_DIR
@@ -54,9 +56,9 @@ trap 'handle_failure' ERR
 
 ### Failures that should be caught immediately
 
-fail_invalid_package_json "$BUILD_DIR"
-warn_prebuilt_modules "$BUILD_DIR"
-warn_missing_package_json "$BUILD_DIR"
+fail_invalid_package_json "$APP_DIR"
+warn_prebuilt_modules "$APP_DIR"
+warn_missing_package_json "$APP_DIR"
 
 ### Compile
 
@@ -123,9 +125,9 @@ build_dependencies() {
   run_if_present 'heroku-prebuild'
   if $PREBUILD; then
     echo "Prebuild detected (node_modules already exists)"
-    rebuild_node_modules "$BUILD_DIR"
+    rebuild_node_modules "$APP_DIR"
   else
-    install_node_modules "$BUILD_DIR"
+    install_node_modules "$APP_DIR"
   fi
   run_if_present 'heroku-postbuild'
 }

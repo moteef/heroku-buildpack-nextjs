@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 source $BP_DIR/lib/binaries.sh
 
 create_signature() {
@@ -57,6 +58,7 @@ restore_cache_directories() {
 }
 
 clear_cache() {
+  echo "Clearing previous node cache $CACHE_DIR/node"
   rm -rf $CACHE_DIR/node
   mkdir -p $CACHE_DIR/node
 }

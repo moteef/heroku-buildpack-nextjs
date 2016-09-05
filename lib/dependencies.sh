@@ -1,6 +1,6 @@
 run_if_present() {
   local script_name=${1:-}
-  local has_script=$(read_json "$BUILD_DIR/package.json" ".scripts[\"$script_name\"]")
+  local has_script=$(read_json "$APP_DIR/package.json" ".scripts[\"$script_name\"]")
   if [ -n "$has_script" ]; then
     echo "Running $script_name"
     npm run "$script_name" --if-present
