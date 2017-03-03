@@ -11,6 +11,7 @@ list_node_config() {
   echo ""
   printenv | grep ^NPM_CONFIG_ || true
   printenv | grep ^NODE_ || true
+  printenv | grep ^NPM_ || true
 
   if [ "$NPM_CONFIG_PRODUCTION" = "true" ] && [ "$NODE_ENV" != "production" ]; then
     echo ""
