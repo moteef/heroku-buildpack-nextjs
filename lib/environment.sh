@@ -4,6 +4,7 @@ create_default_env() {
   export NODE_MODULES_CACHE=${NODE_MODULES_CACHE:-true}
   export NODE_ENV=${NODE_ENV:-production}
   export NODE_PATH=${NODE_PATH:-.}
+  export NPM_TOKEN=${NPM_TOKEN:-00000000-0000-0000-0000-000000000000}
 }
 
 list_node_config() {
