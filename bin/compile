@@ -74,9 +74,9 @@ create_env # can't pipe the whole thing because piping causes subshells, prevent
 list_node_config | output "$LOG_FILE"
 
 install_bins() {
-  local node_engine=$(read_json "$BUILD_DIR/package.json" ".engines.node")
-  local iojs_engine=$(read_json "$BUILD_DIR/package.json" ".engines.iojs")
-  local npm_engine=$(read_json "$BUILD_DIR/package.json" ".engines.npm")
+  local node_engine=$(read_json "$APP_DIR/package.json" ".engines.node")
+  local iojs_engine=$(read_json "$APP_DIR/package.json" ".engines.iojs")
+  local npm_engine=$(read_json "$APP_DIR/package.json" ".engines.npm")
 
   if [ -n "$iojs_engine" ]; then
     echo "engines.iojs (package.json):  $iojs_engine (iojs)"
