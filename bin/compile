@@ -19,7 +19,7 @@ BUILD_DIR=${1:-}
 CACHE_DIR=${2:-}
 ENV_DIR=${3:-}
 BP_DIR=$(cd $(dirname ${0:-}); cd ..; pwd)
-APP_DIR=$(cd ${1:-}; cd lib/assets/dashboard; pwd)
+APP_DIR=$(cd ${1:-}; cd client; pwd)
 
 mkdir -p "$BUILD_DIR/.heroku/node/"
 cd $BUILD_DIR
@@ -108,10 +108,10 @@ restore_cache() {
     local cache_directories=$(get_cache_directories)
     if [ "$cache_directories" == "" ]; then
       echo "Loading 2 from cacheDirectories (default):"
-      restore_cache_directories "$BUILD_DIR" "$CACHE_DIR" "$DEFAULT_CACHE"
+      restore_cache_directories "$APP_DIR" "$CACHE_DIR" "$DEFAULT_CACHE"
     else
       echo "Loading $(echo $cache_directories | wc -w | xargs) from cacheDirectories (package.json):"
-      restore_cache_directories "$BUILD_DIR" "$CACHE_DIR" $cache_directories
+      restore_cache_directories "$APP_DIR" "$CACHE_DIR" $cache_directories
     fi
   else
     echo "Skipping cache restore ($cache_status)"
@@ -144,10 +144,10 @@ cache_build() {
     echo "Skipping cache save (disabled by config)"
   elif [ "$cache_directories" == "" ]; then
     echo "Saving 2 cacheDirectories (default):"
-    save_cache_directories "$BUILD_DIR" "$CACHE_DIR" "$DEFAULT_CACHE"
+    save_cache_directories "$APP_DIR" "$CACHE_DIR" "$DEFAULT_CACHE"
   else
     echo "Saving $(echo $cache_directories | wc -w | xargs) cacheDirectories (package.json):"
-    save_cache_directories "$BUILD_DIR" "$CACHE_DIR" $cache_directories
+    save_cache_directories "$APP_DIR" "$CACHE_DIR" $cache_directories
   fi
   save_signature
 }
