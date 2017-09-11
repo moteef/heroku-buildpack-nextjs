@@ -18,7 +18,13 @@ install_node_modules() {
     else
       echo "Installing node modules (package.json)"
     fi
-    npm install --unsafe-perm --userconfig $build_dir/.npmrc 2>&1
+    local has_script=$(read_json "$APP_DIR/package.json" ".scripts[\"heroku-install\"]")
+    if [ -n "$has_script" ]; then
+      echo "Running heroku-install (and skipping default install command)"
+      npm run "heroku-install" --if-present
+    else
+      npm install --unsafe-perm --userconfig $build_dir/.npmrc 2>&1
+    fi
   else
     echo "Skipping (no package.json)"
   fi
