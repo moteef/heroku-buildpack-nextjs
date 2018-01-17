@@ -3,7 +3,7 @@ run_if_present() {
   local has_script=$(read_json "$APP_DIR/package.json" ".scripts[\"$script_name\"]")
   if [ -n "$has_script" ]; then
     echo "Running $script_name"
-    npm run "$script_name" --if-present
+    yarn "$script_name"
   fi
 }
 
@@ -13,18 +13,12 @@ install_node_modules() {
   if [ -e $build_dir/package.json ]; then
     cd $build_dir
 
-    if [ -e $build_dir/npm-shrinkwrap.json ]; then
-      echo "Installing node modules (package.json + shrinkwrap)"
+    if [ -e $build_dir/yarn.lock ]; then
+      echo "Installing node modules (package.json + yarn.lock)"
     else
       echo "Installing node modules (package.json)"
     fi
-    local has_script=$(read_json "$APP_DIR/package.json" ".scripts[\"heroku-install\"]")
-    if [ -n "$has_script" ]; then
-      echo "Running heroku-install (and skipping default install command)"
-      npm run "heroku-install" --if-present
-    else
-      npm install --unsafe-perm --userconfig $build_dir/.npmrc 2>&1
-    fi
+    yarn 2>&1
   else
     echo "Skipping (no package.json)"
   fi
@@ -36,13 +30,13 @@ rebuild_node_modules() {
   if [ -e $build_dir/package.json ]; then
     cd $build_dir
     echo "Rebuilding any native modules"
-    npm rebuild 2>&1
-    if [ -e $build_dir/npm-shrinkwrap.json ]; then
-      echo "Installing any new modules (package.json + shrinkwrap)"
+    yarn install --force 2>&1
+    if [ -e $build_dir/yarn.lock ]; then
+      echo "Installing any new modules (package.json + yarn.lock)"
     else
       echo "Installing any new modules (package.json)"
     fi
-    npm install --unsafe-perm --userconfig $build_dir/.npmrc 2>&1
+    yarn 2>&1
   else
     echo "Skipping (no package.json)"
   fi
