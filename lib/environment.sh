@@ -1,3 +1,20 @@
+get_os() {
+  uname | tr A-Z a-z
+}
+
+get_cpu() {
+  if [[ "$(uname -p)" = "i686" ]]; then
+    echo "x86"
+  else
+    echo "x64"
+  fi
+}
+
+os=$(get_os)
+cpu=$(get_cpu)
+platform="$os-$cpu"
+export JQ="$BP_DIR/vendor/jq-$os"
+
 create_default_env() {
   export NPM_CONFIG_PRODUCTION=${NPM_CONFIG_PRODUCTION:-false}
   export NPM_CONFIG_LOGLEVEL=${NPM_CONFIG_LOGLEVEL:-error}
@@ -5,11 +22,13 @@ create_default_env() {
   export NODE_ENV=${NODE_ENV:-production}
   export NODE_PATH=${NODE_PATH:-.}
   export NPM_TOKEN=${NPM_TOKEN:-00000000-0000-0000-0000-000000000000}
+  export NODE_VERBOSE=${NODE_VERBOSE:-false}
 }
 
 list_node_config() {
   echo ""
   printenv | grep ^NPM_CONFIG_ || true
+  printenv | grep ^YARN_ || true
   printenv | grep ^NODE_ || true
   printenv | grep ^NPM_ || true
 
@@ -18,13 +37,19 @@ list_node_config() {
     echo "npm scripts will see NODE_ENV=production (not '${NODE_ENV}')"
     echo "https://docs.npmjs.com/misc/config#production"
   fi
+
+  if [ "$NPM_CONFIG_PRODUCTION" == "true" ]; then
+    mcount "npm-config-production-true"
+  elif [ "$NPM_CONFIG_PRODUCTION" == "false" ]; then
+    mcount "npm-config-production-false"
+  fi
 }
 
 export_env_dir() {
   local env_dir=$1
   if [ -d "$env_dir" ]; then
     local whitelist_regex=${2:-''}
-    local blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH|LANG)$'}
+    local blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH|LANG|BUILD_DIR)$'}
     if [ -d "$env_dir" ]; then
       for e in $(ls $env_dir); do
         echo "$e" | grep -E "$whitelist_regex" | grep -qvE "$blacklist_regex" &&
@@ -45,6 +70,6 @@ write_profile() {
 write_export() {
   local bp_dir="$1"
   local build_dir="$2"
-  echo "export PATH=\"$build_dir/.heroku/node/bin:\$PATH:$build_dir/node_modules/.bin\"" > $bp_dir/export
+  echo "export PATH=\"$build_dir/.heroku/node/bin:$build_dir/.heroku/yarn/bin:\$PATH:$build_dir/node_modules/.bin\"" > $bp_dir/export
   echo "export NODE_HOME=\"$build_dir/.heroku/node\"" >> $bp_dir/export
 }
