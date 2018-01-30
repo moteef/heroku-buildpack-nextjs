@@ -61,9 +61,9 @@ trap 'handle_failure' ERR
 
 ### Check initial state
 
-[ -e "$BUILD_DIR/node_modules" ] && PREBUILD=true || PREBUILD=false
-[ -f "$BUILD_DIR/yarn.lock" ] && YARN=true || YARN=false
-[ -f "$BUILD_DIR/package-lock.json" ] && NPM_LOCK=true || NPM_LOCK=false
+[ -e "$APP_DIR/node_modules" ] && PREBUILD=true || PREBUILD=false
+[ -f "$APP_DIR/yarn.lock" ] && YARN=true || YARN=false
+[ -f "$APP_DIR/package-lock.json" ] && NPM_LOCK=true || NPM_LOCK=false
 
 ### Failures that should be caught immediately
 
@@ -173,7 +173,7 @@ build_dependencies() {
   local start=$(nowms)
 
   if $YARN; then
-    yarn_node_modules "$BUILD_DIR"
+    yarn_node_modules "$APP_DIR"
   elif $PREBUILD; then
     echo "Prebuild detected (node_modules already exists)"
     npm_rebuild "$APP_DIR"
