@@ -1,5 +1,103 @@
 # Node.js Buildpack Changelog
 
+## Master
+
+## v114 (2017-11-16)
+
+- Don't default to npm 5.x if the user already has npm >= 5 (#499)
+
+## v113 (2017-11-13)
+
+- Bump default version of Node to Node 8 (#497)
+
+## v112 (2017-11-13)
+
+- Move default Yarn and npm cache directories to a temporary dir (#459)
+- `LOG_CONCURRENCY` fix (#475)
+- Default Yarn to `1.x`
+- Add `BUILD_DIR` to env var blacklist
+
+## v111 (2017-09-06)
+
+- Move `WEB_CONCURRENCY` logic to separate file (#467)
+- Temporarily default Yarn to known-good version
+
+## v110 (2017-07-26)
+
+- Improve error messages when bin version requirements are invalid (#457)
+
+## v109 (2017-07-25)
+
+- Switch to using nodebin to download the node binary (#451)
+
+## v108 (2017-07-24)
+
+- Add `$STACK` to the cache signature (#445)
+- Log output now differentiates between an empty cache and a new cache signature (#448)
+- Remove the use of semver.io to bootstrap npm (#452)
+- Switch to using nodebin to download iojs binaries (#450)
+
+## v107 (2017-07-17)
+
+- Switch to using nodebin to download the yarn binary (#444)
+
+## v106 (2017-06-19)
+
+- Default to npm v5 if `package-lock.json` is present (#429)
+
+## v105 (2017-05-26)
+
+- Break the build if yarn and npm lockfiles are both included (#411)
+
+## v104 (2017-05-22)
+
+- Add `$PREBUILD` to cache signature (#405)
+- Check for `.heroku/node` existence (#384)
+- Add `NODE_ENV=test` to `test-compile` (#403)
+- Install `yarn` if a version is defined in `engines` (#404)
+
+## v101 (2017-04-26)
+
+- Instrument metrics logging
+- Undo the Prepend a leading 0 to `WEB_CONCURRENCY` change
+
+## v99 (2017-04-17)
+
+- Use yarn in CI tests if available
+- Prepend a leading 0 to `WEB_CONCURRENCY`
+
+## v98 (2017-01-31)
+
+- Default to the latest LTS node version (6.x)
+
+## v97 (2017-01-31)
+
+- Cache node_modules
+- No longer run `yarn check`
+
+## v96 (2017-01-27)
+
+- Clear caches from the slug
+- Warn, rather than failing, on a failed `yarn check`
+
+## v95 (2017-01-27)
+
+- Use cache directories instead of node_modules
+- Use yarn, if available, as part of the cache signature
+- Warn about yarn's youth and evolution on build failures
+- Link to opt-out of yarn instructions
+- Use `yarn list` instead of `yarn ls`
+- Hide final dep tree listings under a `NODE_VERBOSE` flag
+
+## v94 (2016-12-16)
+
+- Warn on yarn NODE_ENV and NPM_CONFIG incompatibility
+- Pass --ignore-engines flag to yarn to avoid hard failures
+
+## v93 (2016-12-16)
+
+- Use yarn instead of npm if yarn.lock file is present
+
 ## v91 (2016-7-7)
 
 - Do not fail build on output errors

@@ -5,12 +5,12 @@
 
 set -o errexit    # always exit on error
 set -o pipefail   # don't ignore exit codes when piping output
-set -o nounset    # fail on unset variables
 unset GIT_DIR     # Avoid GIT_DIR leak from previous build steps
 
 ### Constants
 
 DEFAULT_CACHE="node_modules bower_components"
+BPLOG_PREFIX="buildpack.nodejs"
 
 ### Configure directories
 
@@ -20,16 +20,16 @@ CACHE_DIR=${2:-}
 ENV_DIR=${3:-}
 BP_DIR=$(cd $(dirname ${0:-}); cd ..; pwd)
 APP_DIR=$(cd ${1:-}; cd client; pwd)
+STDLIB_FILE=$(mktemp -t stdlib.XXXXX)
 
-mkdir -p "$BUILD_DIR/.heroku/node/"
-cd $BUILD_DIR
-export PATH="$BUILD_DIR/.heroku/node/bin":$PATH
-
-LOG_FILE='/tmp/node-build-log.txt'
-echo "" > "$LOG_FILE"
+### Configure package manager cache directories
+[ ! "$YARN_CACHE_FOLDER" ] && YARN_CACHE_FOLDER=$(mktemp -d -t yarncache.XXXXX)
+[ ! "$NPM_CONFIG_CACHE" ] && NPM_CONFIG_CACHE=$(mktemp -d -t npmcache.XXXXX)
 
 ### Load dependencies
 
+curl --silent --retry 5 --retry-max-time 15 'https://lang-common.s3.amazonaws.com/buildpack-stdlib/v7/stdlib.sh' > "$STDLIB_FILE"
+source "$STDLIB_FILE"
 source $BP_DIR/lib/output.sh
 source $BP_DIR/lib/json.sh
 source $BP_DIR/lib/failure.sh
@@ -38,10 +38,19 @@ source $BP_DIR/lib/binaries.sh
 source $BP_DIR/lib/cache.sh
 source $BP_DIR/lib/dependencies.sh
 
+export PATH="$BUILD_DIR/.heroku/node/bin:$BUILD_DIR/.heroku/yarn/bin":$PATH
+
+LOG_FILE=$(mktemp -t node-build-log.XXXXX)
+echo "" > "$LOG_FILE"
+
 ### Handle errors
 
 handle_failure() {
   header "Build failed"
+  fail_yarn_lockfile_outdated "$LOG_FILE"
+  fail_node_install "$LOG_FILE"
+  fail_yarn_install "$LOG_FILE"
+  fail_invalid_semver "$LOG_FILE"
   warn_untracked_dependencies "$LOG_FILE"
   warn_angular_resolution "$LOG_FILE"
   warn_missing_devdeps "$LOG_FILE"
@@ -52,13 +61,18 @@ trap 'handle_failure' ERR
 
 ### Check initial state
 
-[ -e "$BUILD_DIR/node_modules" ] && PREBUILD=true || PREBUILD=false
+[ -e "$APP_DIR/node_modules" ] && PREBUILD=true || PREBUILD=false
+[ -f "$APP_DIR/yarn.lock" ] && YARN=true || YARN=false
+[ -f "$APP_DIR/package-lock.json" ] && NPM_LOCK=true || NPM_LOCK=false
 
 ### Failures that should be caught immediately
 
 fail_invalid_package_json "$APP_DIR"
 warn_prebuilt_modules "$APP_DIR"
 warn_missing_package_json "$APP_DIR"
+fail_dot_heroku "$APP_DIR"
+fail_dot_heroku_node "$APP_DIR"
+fail_multiple_lockfiles "$APP_DIR"
 
 ### Compile
 
@@ -70,6 +84,9 @@ create_env() {
 }
 
 header "Creating runtime environment"
+
+mkdir -p "$BUILD_DIR/.heroku/node/"
+cd $BUILD_DIR
 create_env # can't pipe the whole thing because piping causes subshells, preventing exports
 list_node_config | output "$LOG_FILE"
 
@@ -77,6 +94,7 @@ install_bins() {
   local node_engine=$(read_json "$APP_DIR/package.json" ".engines.node")
   local iojs_engine=$(read_json "$APP_DIR/package.json" ".engines.iojs")
   local npm_engine=$(read_json "$APP_DIR/package.json" ".engines.npm")
+  local yarn_engine=$(read_json "$APP_DIR/package.json" ".engines.yarn")
 
   if [ -n "$iojs_engine" ]; then
     echo "engines.iojs (package.json):  $iojs_engine (iojs)"
@@ -84,17 +102,36 @@ install_bins() {
     echo "engines.node (package.json):  ${node_engine:-unspecified}"
   fi
   echo "engines.npm (package.json):   ${npm_engine:-unspecified (use default)}"
+  if $YARN; then
+    echo "engines.yarn (package.json):  ${yarn_engine:-unspecified (use default)}"
+  fi
   echo ""
 
   if [ -n "$iojs_engine" ]; then
     warn_node_engine "$iojs_engine"
     install_iojs "$iojs_engine" "$BUILD_DIR/.heroku/node"
     echo "Using bundled npm version for iojs compatibility: `npm --version`"
+    mcount "version.iojs.$(node --version)"
   else
     warn_node_engine "$node_engine"
     install_nodejs "$node_engine" "$BUILD_DIR/.heroku/node"
-    install_npm "$npm_engine" "$BUILD_DIR/.heroku/node"
+    install_npm "$npm_engine" "$BUILD_DIR/.heroku/node" $NPM_LOCK
+    mcount "version.node.$(node --version)"
   fi
+
+  # Download yarn if there is a yarn.lock file or if the user
+  # has specified a version of yarn under "engines". We'll still
+  # only install using yarn if there is a yarn.lock file
+  if $YARN || [ -n "$yarn_engine" ]; then
+    install_yarn "$BUILD_DIR/.heroku/yarn" "$yarn_engine"
+  fi
+
+  if $YARN; then
+    mcount "version.yarn.$(yarn --version)"
+  else
+    mcount "version.npm.$(npm --version)"
+  fi
+
   warn_old_npm
 }
 
@@ -104,6 +141,12 @@ install_bins | output "$LOG_FILE"
 restore_cache() {
   local cache_status="$(get_cache_status)"
 
+  if $YARN; then
+    if [ -e "$BUILD_DIR/node_modules" ]; then
+      warn "node_modules checked into source control" "https://blog.heroku.com/node-habits-2016#9-only-git-the-important-bits"
+      rm -rf "$BUILD_DIR/node_modules"
+    fi
+  fi
   if [ "$cache_status" == "valid" ]; then
     local cache_directories=$(get_cache_directories)
     if [ "$cache_directories" == "" ]; then
@@ -116,6 +159,8 @@ restore_cache() {
   else
     echo "Skipping cache restore ($cache_status)"
   fi
+
+  mcount "cache.$cache_status"
 }
 
 header "Restoring cache"
@@ -123,13 +168,24 @@ restore_cache | output "$LOG_FILE"
 
 build_dependencies() {
   run_if_present 'heroku-prebuild'
-  if $PREBUILD; then
+
+  local cache_status="$(get_cache_status)"
+  local start=$(nowms)
+
+  if $YARN; then
+    yarn_node_modules "$APP_DIR"
+  elif $PREBUILD; then
     echo "Prebuild detected (node_modules already exists)"
-    rebuild_node_modules "$APP_DIR"
+    npm_rebuild "$APP_DIR"
   else
-    install_node_modules "$APP_DIR"
+    npm_node_modules "$APP_DIR"
   fi
+
+  mtime "modules.time.cache.$cache_status" "${start}"
+
   run_if_present 'heroku-postbuild'
+  # TODO: run_if_present 'build'
+  log_build_scripts
 }
 
 header "Building dependencies"
@@ -156,12 +212,17 @@ header "Caching build"
 cache_build | output "$LOG_FILE"
 
 summarize_build() {
-  cd $BUILD_DIR
-  (npm ls --depth=0 | tail -n +2 || true) 2>/dev/null
+  if $NODE_VERBOSE; then
+    list_dependencies "$BUILD_DIR"
+  fi
+
+  mmeasure 'modules.size' "$(measure_size)"
 }
 
 header "Build succeeded!"
+mcount "compile"
 summarize_build | output "$LOG_FILE"
 
 warn_no_start "$LOG_FILE"
 warn_unmet_dep "$LOG_FILE"
+warn_old_npm_lockfile $NPM_LOCK

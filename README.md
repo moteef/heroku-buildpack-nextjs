@@ -45,7 +45,7 @@ into the `$PATH` for easy use in subsequent buildpacks.
 Having trouble? Dig it? Feature request?
 
 - [help.heroku.com](https://help.heroku.com/)
-- [@hunterloftis](http://twitter.com/hunterloftis)
+- [@jeremymorrell](http://twitter.com/jeremymorrell)
 - [GitHub issues](https://github.com/heroku/heroku-buildpack-nodejs/issues)
 
 ## Hacking
@@ -68,7 +68,7 @@ heroku buildpacks:set <your-github-url>#your-branch
 ## Tests
 
 The buildpack tests use [Docker](https://www.docker.com/) to simulate
-Heroku's Cedar and Cedar-14 containers.
+Heroku's Cedar-14 and Heroku-16 containers.
 
 To run the test suite:
 
@@ -79,10 +79,10 @@ make test
 Or to just test in cedar or cedar-14:
 
 ```
-make test-cedar-10
 make test-cedar-14
+make test-heroku-16
 ```
 
 The tests are run via the vendored
-[shunit2](http://shunit2.googlecode.com/svn/trunk/source/2.1/doc/shunit2.html)
+[shunit2](https://github.com/kward/shunit2)
 test framework.

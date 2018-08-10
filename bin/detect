@@ -6,4 +6,5 @@ if [ -f $1/client/package.json ]; then
   exit 0
 fi
 
+>&2 echo 'Node.js: package.json not found in application root'
 exit 1
